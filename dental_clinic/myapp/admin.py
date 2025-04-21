@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import Clinic,Patient,Doctor,Nurse,Apointment
-from rest_framework.authtoken.models import Token
+
 admin.site.register(Clinic)
 admin.site.register(Patient)
 admin.site.register(Doctor)

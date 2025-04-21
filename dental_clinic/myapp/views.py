@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.validators import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.tokens import RefreshToken
 
 #serializers
 from .serializers import Create_Doctor_Serializer,UserSerializer
@@ -53,11 +54,10 @@ def create_new_patient(request):
 
 
             with transaction.atomic():
-                user = User.objects.create(
-                    username = username,
-                    email = email,
-                    password = password
-                )
+                user = User(username = username, email = email)
+                user.set_password(password)
+                user.save()
+                
                 patient = Patient.objects.create(
                     user = user,
                     photo = photo,
@@ -65,7 +65,16 @@ def create_new_patient(request):
                     address = address, 
                     clinic = clinic
                 )
-                return Response({'message':'created successfully'},status=status.HTTP_201_CREATED)
+                # auto tokens
+                refresh = RefreshToken.for_user(user)
+                access_token = str(refresh.access_token)
+                refresh_token = str(refresh)
+                return Response({
+                    'message':'created successfully',
+                    "access": access_token,
+                    "refresh": refresh_token
+                    }
+                    ,status=status.HTTP_201_CREATED)
         return Response({'Error':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
         
     except Exception as e:
@@ -96,11 +105,9 @@ def create_doctor(request):
 
 # ⛑️ Rollback block starts here
              with transaction.atomic():
-                 user =  User.objects.create_user(
-                     username =username,
-                     email=email,
-                     password=password,
-                     )
+                 user =  User(username = username,email = email)
+                 user.set_password(password)
+                 user.save()
                  doctor = Doctor.objects.create(
                       user = user,
                       phone = phone,
@@ -108,7 +115,18 @@ def create_doctor(request):
                       qualification = qualification,
                       clinic = clinic
                       )
-                 return Response({'message':'created successfully'},status=status.HTTP_201_CREATED)
+                 
+                 refresh = RefreshToken.for_user(user)
+                 access_token = str(refresh.access_token)
+                 refresh_token = str(refresh)
+                 
+                 return Response(
+                     {
+                     'message':'created successfully',
+                     'access' : access_token,
+                     'refresh': refresh_token
+                     }
+                     ,status=status.HTTP_201_CREATED)
              
         return Response({'Error':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
             
@@ -139,18 +157,25 @@ def create_new_nurse(request):
 
             with transaction.atomic():
 
-                user = User.objects.create(
-                    username = username,
-                    email = email,
-                    password = password
-                )
+                user = User(username = username,email = email )
+                user.set_password(password)
+                user.save()
 
                 nurse = Nurse.objects.create(
                     user = user,
                     phone = phone,
                     clinic = clinic
                 )
-                return Response({'message':'created successfully'},status=status.HTTP_201_CREATED)
+
+                refresh = RefreshToken.for_user(user)
+                access_token = str(refresh.access_token)
+                refresh_token = str(refresh)
+                return Response({
+                    'message':'created successfully',
+                    'access':access_token,
+                    'refresh':refresh
+                    },status=status.HTTP_201_CREATED)
+            
         return Response({'Error':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
@@ -186,7 +211,7 @@ def create_clinic(request):
     
 
 @api_view(['POST'])
-@authentication_classes([TokenAuthentication])
+#@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def create_appointment(request):
     try:
